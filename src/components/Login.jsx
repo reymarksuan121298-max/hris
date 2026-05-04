@@ -219,7 +219,7 @@ const Login = () => {
 
         <div style={{ marginTop: '32px', borderTop: '1px solid var(--glass-border)', paddingTop: '24px' }}>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-            Designed and Developed By: <strong>Edwin Angelo Catequista</strong><br />
+            Designed and Developed By: <strong>Reymark Suan</strong><br />
             Powered By : SMNR IT Group @ SGC Corporation
           </p>
         </div>
