@@ -9,12 +9,22 @@ const QuickStageModal = ({ isOpen, onClose, onRefresh }) => {
     name_english: '',
     email: '',
     mobile: '',
-    department: 'ADMIN',
-    position: '',
+    department_id: '',
+    designation_id: '',
     employment_status: 'Probationary Status',
     dob: '',
     sex: 'Male'
   });
+
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      supabase.from('departments').select('*').then(({ data }) => data && setDepartments(data));
+      supabase.from('designations').select('*').then(({ data }) => data && setDesignations(data));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -25,7 +35,12 @@ const QuickStageModal = ({ isOpen, onClose, onRefresh }) => {
 
   const handleFinalize = async () => {
     setLoading(true);
-    const { error } = await supabase.from('employees').insert([formData]);
+    
+    const insertData = { ...formData };
+    if (insertData.department_id) insertData.department_id = parseInt(insertData.department_id, 10);
+    if (insertData.designation_id) insertData.designation_id = parseInt(insertData.designation_id, 10);
+    
+    const { error } = await supabase.from('employees').insert([insertData]);
     if (error) {
       alert("Error staging employee: " + error.message);
     } else {
@@ -137,18 +152,17 @@ const QuickStageModal = ({ isOpen, onClose, onRefresh }) => {
                 <h4 style={{ color: 'var(--accent-blue)', margin: 0 }}>Placement Details</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Department Placement</label>
-                  <select name="department" value={formData.department} onChange={handleInputChange} className="glass-input">
-                    <option>ADMIN</option>
-                    <option>ACCOUNTING</option>
-                    <option>HR</option>
-                    <option>IT</option>
-                    <option>TELLER OPERATIONS</option>
-                    <option>LOGISTICS</option>
+                  <select name="department_id" value={formData.department_id} onChange={handleInputChange} className="glass-input">
+                    <option value="">Select Department</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Job Position</label>
-                  <input name="position" value={formData.position} onChange={handleInputChange} className="glass-input" />
+                  <select name="designation_id" value={formData.designation_id} onChange={handleInputChange} className="glass-input">
+                    <option value="">Select Position</option>
+                    {designations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Employment Status</label>
@@ -174,8 +188,8 @@ const QuickStageModal = ({ isOpen, onClose, onRefresh }) => {
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
                     <div style={{ color: 'var(--text-secondary)' }}>Name:</div><div style={{ fontWeight: 'bold' }}>{formData.name_english || 'NOT SET'}</div>
-                    <div style={{ color: 'var(--text-secondary)' }}>Position:</div><div>{formData.position || 'NOT SET'}</div>
-                    <div style={{ color: 'var(--text-secondary)' }}>Dept:</div><div>{formData.department}</div>
+                    <div style={{ color: 'var(--text-secondary)' }}>Position ID:</div><div>{formData.designation_id || 'NOT SET'}</div>
+                    <div style={{ color: 'var(--text-secondary)' }}>Dept ID:</div><div>{formData.department_id || 'NOT SET'}</div>
                   </div>
                 </div>
               </div>

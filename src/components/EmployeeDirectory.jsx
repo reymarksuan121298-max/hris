@@ -38,10 +38,25 @@ const EmployeeDirectory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+
   const fetchEmployees = async () => {
-    const { data, error } = await supabase.from('employees').select('*').limit(500);
-    if (!error && data) {
-      setEmployees(data);
+    const [empRes, deptRes, desigRes] = await Promise.all([
+      supabase.from('employees').select('*, departments(name), designations(name)').limit(500),
+      supabase.from('departments').select('*'),
+      supabase.from('designations').select('*')
+    ]);
+
+    if (!deptRes.error && deptRes.data) setDepartments(deptRes.data);
+    if (!desigRes.error && desigRes.data) setDesignations(desigRes.data);
+
+    if (!empRes.error && empRes.data) {
+      setEmployees(empRes.data.map(emp => ({
+        ...emp,
+        department: emp.departments?.name || emp.department,
+        position: emp.designations?.name || emp.position
+      })));
     }
     setLoading(false);
   };
@@ -119,7 +134,35 @@ const EmployeeDirectory = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { id, created_at, ...updateData } = editForm;
+      const updateData = {
+        name_english: editForm.name_english,
+        email: editForm.email,
+        mobile: editForm.mobile,
+        employment_status: editForm.employment_status,
+        dob: editForm.dob,
+        sex: editForm.sex,
+        blood_type: editForm.blood_type,
+        residence_address: editForm.residence_address,
+        school_name: editForm.school_name,
+        educational: editForm.educational,
+        highest_level: editForm.highest_level,
+        major_subject: editForm.major_subject,
+        skills: editForm.skills,
+        work_history: editForm.work_history,
+        csc_license: editForm.csc_license,
+        csc_date: editForm.csc_date,
+        legal_34_40: editForm.legal_34_40
+      };
+
+      if (editForm.department_id) {
+        updateData.department_id = parseInt(editForm.department_id, 10);
+        updateData.department = null;
+      }
+      if (editForm.designation_id) {
+        updateData.designation_id = parseInt(editForm.designation_id, 10);
+        updateData.position = null;
+      }
+
     const { error } = await supabase
       .from('employees')
       .update(updateData)
@@ -466,13 +509,19 @@ const EmployeeDirectory = () => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '16px' }}>
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Department</label>
-                        <input value={editForm.department || ''} onChange={(e) => setEditForm({...editForm, department: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Department</label>
+                        <select value={editForm.department_id || ''} onChange={(e) => setEditForm({...editForm, department_id: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }}>
+                          <option value="">{editForm.department || 'Select Department'}</option>
+                          {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                       </div>
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Position Wrapper</label>
-                        <input value={editForm.position || ''} onChange={(e) => setEditForm({...editForm, position: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Designation / Position</label>
+                        <select value={editForm.designation_id || ''} onChange={(e) => setEditForm({...editForm, designation_id: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }}>
+                          <option value="">{editForm.position || 'Select Designation'}</option>
+                          {designations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                       </div>
                     </div>
 

@@ -348,6 +348,9 @@ const StaffRoster = () => {
   const [incidentReports, setIncidentReports] = useState([]);
   const [uploadingIncident, setUploadingIncident] = useState(false);
 
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+
   useEffect(() => {
     fetchEmployees();
   }, []);
@@ -355,12 +358,25 @@ const StaffRoster = () => {
   const fetchEmployees = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase.from('employees').select('*').order('name_english', { ascending: true });
+    const [empRes, deptRes, desigRes] = await Promise.all([
+      supabase.from('employees').select('*, departments(name), designations(name)').order('name_english', { ascending: true }),
+      supabase.from('departments').select('*'),
+      supabase.from('designations').select('*')
+    ]);
 
-    if (!error && data) {
-      setEmployees(data);
+    if (!deptRes.error && deptRes.data) setDepartments(deptRes.data);
+    if (!desigRes.error && desigRes.data) setDesignations(desigRes.data);
+
+    if (!empRes.error && empRes.data) {
+      const mappedData = empRes.data.map(emp => ({
+        ...emp,
+        department: emp.departments?.name || emp.department,
+        position: emp.designations?.name || emp.position
+      }));
+      setEmployees(mappedData);
+
       const initialExpanded = {};
-      const depts = [...new Set(data.map(e => e.department || 'UNCATEGORIZED'))];
+      const depts = [...new Set(mappedData.map(e => e.department || 'UNCATEGORIZED'))];
       depts.forEach((d, i) => { if (i === 0) initialExpanded[d] = true; });
       setExpandedDepts(initialExpanded);
     }
@@ -416,7 +432,17 @@ const StaffRoster = () => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const { id, created_at, ...updateData } = editForm;
+    const { id, created_at, departments: _dept, designations: _desig, ...updateData } = editForm;
+
+    if (editForm.department_id) {
+      updateData.department_id = parseInt(editForm.department_id, 10);
+      updateData.department = null;
+    }
+    if (editForm.designation_id) {
+      updateData.designation_id = parseInt(editForm.designation_id, 10);
+      updateData.position = null;
+    }
+
     const { error } = await supabase.from('employees').update(updateData).eq('id', id);
     if (!error) {
       setSelectedProfile(editForm);
@@ -942,11 +968,17 @@ const StaffRoster = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Department Allocation</label>
-                        <input value={editForm.department || ''} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }} />
+                        <select value={editForm.department_id || ''} onChange={(e) => setEditForm({ ...editForm, department_id: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }}>
+                          <option value="">{editForm.department || 'Select Department'}</option>
+                          {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Position Wrapper</label>
-                        <input value={editForm.position || ''} onChange={(e) => setEditForm({ ...editForm, position: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }} />
+                        <select value={editForm.designation_id || ''} onChange={(e) => setEditForm({ ...editForm, designation_id: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-primary)', color: '#fff', outline: 'none' }}>
+                          <option value="">{editForm.position || 'Select Designation'}</option>
+                          {designations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                       </div>
                     </div>
                   </div>

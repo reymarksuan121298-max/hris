@@ -24,7 +24,7 @@ const OnboardingVault = () => {
   // Massive Data Model corresponding to PDS / 7-Pillars
   const [formData, setFormData] = useState({
     name_english: '', dob: '', pob: '', sex: '', civil_status: '',
-    department: 'IT', position: '', employment_status: 'Applicant / Pre-Hire Stage',
+    department_id: '', designation_id: '', employment_status: 'Applicant / Pre-Hire Stage',
     height: '', weight: '', blood_type: '',
     gsis: '', pagibig: '', philhealth: '', sss: '', tin: '', citizenship: '',
     residence_address: '', residence_postal: '', present_address: '', present_postal: '',
@@ -41,14 +41,20 @@ const OnboardingVault = () => {
   const [photoFile, setPhotoFile] = useState(null);
 
   const fetchData = async () => {
-    const { data } = await supabase.from('employees').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('employees').select('*, departments(name), designations(name)').order('created_at', { ascending: false });
     if (data) {
-      setPipeline(data.filter(e => {
+      const mappedData = data.map(emp => ({
+        ...emp,
+        department: emp.departments?.name || emp.department,
+        position: emp.designations?.name || emp.position
+      }));
+      
+      setPipeline(mappedData.filter(e => {
         const docs = e.modular_docs || {};
         const uploadedCount = Object.values(docs).filter(d => d.url).length;
         return uploadedCount < 8;
       }));
-      setVerified(data.filter(e => {
+      setVerified(mappedData.filter(e => {
         const docs = e.modular_docs || {};
         const approvedCount = Object.values(docs).filter(d => d.status === 'Approved').length;
         return approvedCount === 8;
@@ -66,7 +72,14 @@ const OnboardingVault = () => {
     return () => { document.body.style.overflow = ''; };
   }, [showModal]);
 
-  useEffect(() => { fetchData(); }, []);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+
+  useEffect(() => { 
+    fetchData(); 
+    supabase.from('departments').select('*').then(({ data }) => data && setDepartments(data));
+    supabase.from('designations').select('*').then(({ data }) => data && setDesignations(data));
+  }, []);
 
   const handleFileSelect = (e) => {
     const newFiles = Array.from(e.target.files);
@@ -125,8 +138,8 @@ const OnboardingVault = () => {
 
       await supabase.from('employees').insert([{
         name_english: formData.name_english,
-        department: formData.department,
-        position: formData.position,
+        department_id: formData.department_id ? parseInt(formData.department_id, 10) : null,
+        designation_id: formData.designation_id ? parseInt(formData.designation_id, 10) : null,
         employment_status: formData.employment_status,
         photo_url: photo_url,
         dob: formData.dob || null,
@@ -321,18 +334,18 @@ const OnboardingVault = () => {
                       <div style={{ display: 'flex', gap: '16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '50%' }}>
                           <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Department Placement</label>
-                          <select value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} style={{ padding: '10px', borderRadius: '6px', background: 'var(--bg-primary)', border: '1px solid var(--glass-border)', color: '#fff', outline: 'none' }}>
-                            <option>CFO</option>
-                            <option>ACCOUNTING</option>
-                            <option>IT</option>
-                            <option>HR</option>
-                            <option>ADMIN</option>
-                            <option>GLOWING FORTUNE (LDN, LDS)</option>
-                            <option>ROYAL GAMING OPC</option>
-                            <option>IMPERIAL GAMING OPC</option>
+                          <select value={formData.department_id} onChange={e => setFormData({...formData, department_id: e.target.value})} style={{ padding: '10px', borderRadius: '6px', background: 'var(--bg-primary)', border: '1px solid var(--glass-border)', color: '#fff', outline: 'none' }}>
+                            <option value="">Select Department</option>
+                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                           </select>
                         </div>
-                        <VaultInput label="Job Position" field="position" width="50%" formData={formData} setFormData={setFormData} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '50%' }}>
+                          <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Job Position</label>
+                          <select value={formData.designation_id} onChange={e => setFormData({...formData, designation_id: e.target.value})} style={{ padding: '10px', borderRadius: '6px', background: 'var(--bg-primary)', border: '1px solid var(--glass-border)', color: '#fff', outline: 'none' }}>
+                            <option value="">Select Position</option>
+                            {designations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </div>
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
